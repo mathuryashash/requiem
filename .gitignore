@@ -32,3 +32,8 @@
 
 # Fixtures should be committed (real payloads, scrubbed tokens)
 # fixtures/ is NOT ignored
+
+# local credentials
+deploy/.env.flagsmith
+.env.*
+!.env.example

@@ -1,0 +1,35 @@
+{
+  "status": 200,
+  "body": {
+    "identifier": "user_000",
+    "traits": [],
+    "flags": [
+      {
+        "id": 2,
+        "feature": {
+          "id": 1,
+          "name": "buy_button",
+          "created_date": "2026-11-26T10:59:52.300603Z",
+          "description": null,
+          "initial_value": "grey",
+          "default_enabled": true,
+          "type": "MULTIVARIATE"
+        },
+        "feature_state_value": "green",
+        "environment": 2,
+        "identity": null,
+        "feature_segment": 1,
+        "enabled": true,
+        "reason": "SPLIT; weight=50.0",
+        "variant": null,
+        "metadata": {
+          "experiment": {
+            "id": 1,
+            "name": "Green buy button",
+            "in_experiment": true
+          }
+        }
+      }
+    ]
+  }
+}

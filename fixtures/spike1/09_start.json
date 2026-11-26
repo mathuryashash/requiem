@@ -1,0 +1,44 @@
+{
+  "status": 200,
+  "body": {
+    "id": 1,
+    "feature": {
+      "id": 1,
+      "name": "buy_button",
+      "type": "MULTIVARIATE",
+      "initial_value": "grey",
+      "multivariate_options": [
+        {
+          "id": 1,
+          "uuid": "ef185e02-0b20-4c9e-b741-cc56f29567c7",
+          "type": "unicode",
+          "integer_value": null,
+          "string_value": "green",
+          "boolean_value": null,
+          "default_percentage_allocation": 0.0,
+          "key": null
+        }
+      ]
+    },
+    "name": "Green buy button",
+    "hypothesis": "A green buy button raises purchases.",
+    "status": "running",
+    "metrics": [
+      {
+        "id": 1,
+        "metric": 1,
+        "metric_name": "purchase",
+        "aggregation": "occurrence",
+        "direction": "up",
+        "expected_direction": "increase",
+        "created_at": "2026-11-26T11:00:50.545019Z"
+      }
+    ],
+    "created_at": "2026-11-26T11:00:50.543356Z",
+    "updated_at": "2026-11-26T11:00:50.715810Z",
+    "started_at": "2026-11-26T11:00:50.712944Z",
+    "ended_at": null,
+    "rollout_decision": null,
+    "rollout_variant": null
+  }
+}

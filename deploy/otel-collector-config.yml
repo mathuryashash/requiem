@@ -7,27 +7,39 @@ receivers:
         endpoint: 0.0.0.0:4318
 
 processors:
-  batch:
-    send_batch_size: 1024
-    timeout: 10s
-
   memory_limiter:
     check_interval: 1s
     limit_mib: 512
     spike_limit_mib: 128
+  batch:
+    timeout: 1s
+
+connectors:
+  # Turns spans into request/error/latency metrics, split by flag key and variant,
+  # so Prometheus can show each variant's error rate and p95 on its own.
+  spanmetrics:
+    histogram:
+      explicit:
+        buckets: [25ms, 50ms, 100ms, 250ms, 500ms, 1s, 2s, 5s]
+    dimensions:
+      - name: flag.key
+      - name: flag.variant
+      - name: http.route
+    metrics_flush_interval: 5s
 
 exporters:
   prometheus:
-    endpoint: "0.0.0.0:8888"
+    endpoint: "0.0.0.0:8889"
+  debug:
+    verbosity: basic
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
       processors: [memory_limiter, batch]
-      exporters: [prometheus]
-
+      exporters: [spanmetrics, debug]
     metrics:
-      receivers: [otlp]
+      receivers: [otlp, spanmetrics]
       processors: [memory_limiter, batch]
       exporters: [prometheus]

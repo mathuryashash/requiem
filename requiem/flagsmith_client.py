@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# NOT VERIFIED: the experiment, metric and event paths below do not match the live API
+# (real paths: /environments/{env_key}/experiments/..., POST /api/v1/events/). See SPIKE_RESULTS.md.
+# Rewrite against spikes/experiment_e2e.py before using.
 """
 Requiem Python Client for Flagsmith API - REWRITTEN WITH HTTPX
 Proper typed HTTP client with error handling, timeouts, and tests

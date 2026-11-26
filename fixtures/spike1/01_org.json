@@ -1,0 +1,37 @@
+{
+  "status": 201,
+  "body": {
+    "id": 3,
+    "uuid": "8ab3bcb4-6c28-41bb-a2a0-bf3e9ae363a8",
+    "name": "Requiem",
+    "created_date": "2026-11-26T10:59:52.141657Z",
+    "webhook_notification_email": null,
+    "num_seats": 1,
+    "subscription": {
+      "id": 3,
+      "has_active_billing_periods": false,
+      "current_billing_period": null,
+      "deleted_at": null,
+      "uuid": "b71d0e02-414b-4cc7-87f5-d84e98d55f6c",
+      "subscription_id": null,
+      "subscription_date": null,
+      "plan": "free",
+      "max_seats": 1,
+      "max_api_calls": 50000,
+      "cancellation_date": null,
+      "customer_id": null,
+      "billing_status": null,
+      "payment_method": null,
+      "notes": null
+    },
+    "role": null,
+    "persist_trait_data": true,
+    "block_access_to_admin": false,
+    "stop_serving_flags": false,
+    "api_limit_restriction_enabled": false,
+    "api_limit_grace_period_used": false,
+    "overage_billing_eligible": false,
+    "restrict_project_create_to_admin": false,
+    "force_2fa": false
+  }
+}

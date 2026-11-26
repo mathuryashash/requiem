@@ -1,0 +1,17 @@
+{
+  "status": 201,
+  "body": {
+    "id": 1,
+    "name": "purchase",
+    "description": "",
+    "aggregation": "occurrence",
+    "direction": "up",
+    "definition": {
+      "version": 1,
+      "event": "purchase"
+    },
+    "experiments": [],
+    "created_at": "2026-11-26T10:59:52.486964Z",
+    "updated_at": "2026-11-26T10:59:52.486979Z"
+  }
+}

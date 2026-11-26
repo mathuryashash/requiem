@@ -1,0 +1,48 @@
+{
+  "status": 201,
+  "body": {
+    "id": 1,
+    "name": "buy_button",
+    "type": "MULTIVARIATE",
+    "default_enabled": true,
+    "initial_value": "grey",
+    "created_date": "2026-11-26T10:59:52.300603Z",
+    "description": null,
+    "tags": [],
+    "multivariate_options": [
+      {
+        "id": 1,
+        "uuid": "ef185e02-0b20-4c9e-b741-cc56f29567c7",
+        "type": "unicode",
+        "integer_value": null,
+        "string_value": "green",
+        "boolean_value": null,
+        "default_percentage_allocation": 50.0,
+        "key": null
+      }
+    ],
+    "is_archived": false,
+    "owners": [
+      {
+        "id": 1,
+        "email": "admin@requiem.local",
+        "first_name": "Admin",
+        "last_name": "User",
+        "last_login": null,
+        "uuid": "a74f0855-081f-46f5-a703-e570cca73174"
+      }
+    ],
+    "group_owners": [],
+    "uuid": "b9cba6c7-fce1-40fc-ba39-e4900d6f13d3",
+    "project": 2,
+    "environment_feature_state": null,
+    "segment_feature_state": null,
+    "num_segment_overrides": 0,
+    "num_identity_overrides": null,
+    "is_num_identity_overrides_complete": true,
+    "is_server_key_only": false,
+    "last_modified_in_any_environment": null,
+    "last_modified_in_current_environment": null,
+    "metadata": []
+  }
+}

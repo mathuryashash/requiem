@@ -1,0 +1,15 @@
+{
+  "status": 201,
+  "body": {
+    "id": 1,
+    "warehouse_type": "flagsmith",
+    "status": "created",
+    "status_detail": null,
+    "name": "Flagsmith Warehouse - Production",
+    "config": null,
+    "created_at": "2026-11-26T10:59:52.436644Z",
+    "total_events_received": null,
+    "unique_events_count": null,
+    "last_event_received_at": null
+  }
+}

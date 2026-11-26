@@ -1,0 +1,23 @@
+{
+  "status": 201,
+  "body": {
+    "id": 2,
+    "uuid": "246945da-4db6-4ffa-a3dd-231c36cc3036",
+    "name": "Production",
+    "api_key": "<scrubbed>",
+    "description": null,
+    "project": 2,
+    "minimum_change_request_approvals": null,
+    "allow_client_traits": true,
+    "banner_text": null,
+    "banner_colour": null,
+    "hide_disabled_flags": null,
+    "use_mv_v2_evaluation": true,
+    "use_identity_composite_key_for_hashing": true,
+    "hide_sensitive_data": false,
+    "use_v2_feature_versioning": false,
+    "use_identity_overrides_in_local_eval": true,
+    "is_creating": false,
+    "metadata": []
+  }
+}

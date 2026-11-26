@@ -1,97 +1,91 @@
-# Requiem: Self-Hosted Feature Flag Lifecycle Management
+# Requiem
 
-**Every feature flag ends one of two ways: killed or retired. Requiem handles both.**
+**Every feature flag ends one of two ways: killed or retired. Requiem handles both, for self-hosted Flagsmith.**
 
-## Built during Toggle Wars
+Built for Toggle Wars (WeMakeDevs x Flagsmith), Track 3: Build on Open Source Flagsmith.
+The hacking window was 26 Nov 08:00 IST to 29 Nov 20:00 IST. The first commit is from 26 Nov
+14:50 IST, and nothing in this repo predates the window.
 
-- **Hackathon:** Toggle Wars 2026 (WeMakeDevs × Flagsmith)
-- **Track:** Build on Open Source Flagsmith (self-hosted)
-- **Hacking Window:** Nov 26 08:00 IST – Nov 29 20:00 IST
-- **First Commit:** Nov 26 08:00 IST+
-- **Guarantee:** No code or scaffolding predates the hacking window; all build during the event.
+## What works today (26 Nov)
 
-## Project Status
+| Piece | State | Evidence |
+|---|---|---|
+| Self-hosted Flagsmith with Experimentation (Postgres as the warehouse) | Works end to end: experiments split traffic, take events, and compute results | [SPIKE_RESULTS.md](SPIKE_RESULTS.md), `fixtures/spike1/` |
+| Demo shop with two experiments (`buy_button`, `new_checkout`) and a fault switch | Works | `shop/app.py` |
+| WATCH: OTel spans tagged `flag.key`/`flag.variant`, then collector spanmetrics, then per-variant counters in Prometheus | Works | `deploy/otel-collector-config.yml`, `requiem/watch.py` |
+| KILL: contract in `requiem.yaml`, 3 breached windows in a row, then rollout to 0%, pause, Feature Health "Unhealthy", Grafana annotation, incident note | Works, measured below | `requiem/decide.py`, `requiem/service.py`, `incidents/` |
+| Undo | Works | `python -m requiem.service undo new_checkout` |
+| Grafana dashboard (per-variant error rate, requests, p95, kill annotations) | Provisioned | `deploy/grafana-provisioning/`, [screenshot](docs/grafana_kill.png) |
+| RETIRE (results, decision memo, approval, PR that deletes the losing code) | Not built yet (Day 3) | the LibCST codemod is prototyped outside this repo |
+| NAG GitHub Action (`dies_on`) | Not built yet (Day 3) | n/a |
 
-This is a living build document. Detailed progress, decisions, and results are logged in:
-- **Decision Log:** [`PLAN.md`](D:/hackathons/flagsmith/PLAN.md) (hour-by-hour build plan)
-- **Decisions:** [`decision.md`](D:/hackathons/flagsmith/decision.md) (D-001 through D-010 locked; D-011+ added during build)
-- **Build Status:** [`STATUS.md`](D:/hackathons/toggle_wars/STATUS.md)
+## Measured: how fast a broken variant gets killed
 
-## Quick Start (Coming Soon)
+`loadgen/run.py measure` runs 30 shoppers with fixed identities against the shop. It turns on
+the fault (the new checkout then fails 50% of the time; control is never affected) and times
+two things: when Requiem's kill lands, and when the last shopper is served the new checkout.
+Each trial starts from a clean 50/50 split. With the contract in `requiem.yaml` (5% ceiling,
+30 s windows, checked every 5 s, 3 breaches in a row):
+
+| trial | fault on to kill (s) | fault on to last "new" checkout served (s) | rollout API call (ms) |
+|---|---|---|---|
+| 1 | 24.0 | 23.6 | 176 |
+| 2 | 24.7 | 24.1 | 234 |
+| 3 | 20.7 | 20.2 | 144 |
+| 4 | 24.5 | 24.0 | 158 |
+| 5 | 24.8 | 24.3 | 284 |
+
+Median 24.5 s from breakage to kill (20.7 to 24.8 s). In every trial the last new checkout was served
+0.34-0.63 s before Requiem's incident note appeared, which is while the kill sequence was still running
+(rollout first, then pause, Feature Health and notes). No shopper got the new checkout after that. Raw data: `fixtures/kill_e2e_20261126T121218Z_5trials.json`.
+
+Where the time goes, roughly: up to about 10 s for spans to become a Prometheus sample
+(collector flush every 5 s, scrape every 5 s), the first breached check, then two more checks
+5 s apart. Once Requiem calls Flagsmith, the switch itself is immediate: the rollout call takes 144-284 ms.
+
+This is load-generated traffic on one laptop, not real users.
+
+## How Flagsmith is used
+
+- **Experiments (open source, beta):** `get_experiment_flag()` in the shop (remote
+  evaluation), and exposure plus `purchase` events sent to the self-hosted API. Results come
+  from `/experiments/{id}/results/`.
+- **Kill:** `PATCH /environments/{key}/experiments/{id}/rollout/` with `rollout_percentage: 0`
+  sends everyone to the control value. `POST .../pause/` stops collection. Pausing alone does
+  **not** change what users are served (checked live), which is why Requiem does both.
+- **Feature Health (open source):** Requiem posts to the Webhook provider, so the flag shows
+  as Unhealthy inside Flagsmith with the reason. Undo posts healthy.
+- Gotchas found on the way, also in SPIKE_RESULTS.md:
+  - On self-hosted, the "Flagsmith database" warehouse is `warehouse_type: postgres` with
+    `config: {"source": "flagsmith_database"}`.
+  - Multivariate options need a `key`, otherwise the flags API returns `variant: null`.
+  - The experiment list nests the whole feature.
+
+## Run it (local, Windows or Linux)
 
 ```bash
-docker compose up
+# 1. Flagsmith, Postgres, task processor, OTel collector, Prometheus, Grafana
+cd deploy && docker compose up -d && cd ..
+# 2. Create an admin user + token, then the org/project/experiments (prints the .env values)
+python demo/setup_demo.py --token <admin token>   # writes nothing; put the output in .env
+# .env also needs FLAGSMITH_ADMIN_TOKEN, FLAGSMITH_URL, PROMETHEUS_URL, GRAFANA_URL
+# 3. Shop and Requiem
+python -m uvicorn shop.app:app --port 8090 --env-file .env
+python -m requiem.service run
+# 4. Break it and watch it get killed
+python loadgen/run.py measure --trials 1
 ```
 
-Will bring up:
-- Self-hosted Flagsmith (with Experimentation enabled)
-- OTel collector + Prometheus
-- Grafana with provisioned dashboard
-- Requiem service
-- FastAPI demo shop
-- Load generator (locust)
+Grafana runs at http://localhost:3030 (dashboard "Requiem: per-variant health"). The
+one-command `docker compose up` with the shop and Requiem inside it is still to do (Day 3).
 
-## How It Works
+## Tests
 
-### KILL: Automatic Rollback on SLO Breach
+`python -m pytest -q tests`: the breach rules (ceiling, minimum traffic, the control gap,
+consecutive windows, bad contracts), the Flagsmith client against payload shapes recorded
+from the live API, and the Prometheus parsing.
 
-When a feature variant violates SLOs (error rate, latency p95, etc.):
-1. Flagsmith API: rollout to 0% (all users → control variant)
-2. Pause the experiment (stop enrolling)
-3. Mark feature as "Unhealthy" in Flagsmith (Feature Health webhook)
-4. Annotate Grafana dashboard + incident note
+## Decisions
 
-Fully automatic by default; `on_breach: ask` mode waits for human approval.
-
-### RETIRE: Experiment → Decision → Code Deletion
-
-When experiment reaches statistical significance:
-1. Read results from Flagsmith (chance to win, lift, SRM, excluded identities)
-2. Generate decision memo (code owns numbers; LLM writes prose)
-3. Human approves
-4. Complete experiment + set winner as default
-5. GitHub PR that deletes the losing code and flag definition
-
-### NAG: Stale Flag Detection (GitHub Action)
-
-Fails PR checks when flags are past their `dies_on` date.
-
-## Architecture
-
-```
-Flagsmith (self-hosted)
-  ├─ Postgres (DB + Experimentation warehouse)
-  ├─ API + Feature Health webhooks
-  │
-├─ Demo Shop (FastAPI + Python SDK, remote evaluation)
-│  └─ OpenTelemetry (flag key + variant per request)
-│
-├─ OTel Collector (spanmetrics)
-│  └─ Prometheus (per-variant error rate, p95)
-│
-├─ Requiem Service (Python)
-│  ├─ Reads requiem.yaml contracts
-│  ├─ Checks Prometheus every 10s
-│  ├─ Calls Flagsmith API: pause/rollout on breach
-│  └─ Posts Feature Health webhooks
-│
-├─ Grafana (provisioned dashboard + annotations)
-│
-└─ Load Generator (locust, persistent identities)
-```
-
-## Decision Log Pointer
-
-For all design decisions, locked constraints, and fallback plans:
-→ See [`D:/hackathons/flagsmith/decision.md`](D:/hackathons/flagsmith/decision.md)
-
-Key decisions:
-- **D-003:** Self-hosted Experimentation uses Flagsmith's own Postgres (fine for demos)
-- **D-006:** Python everywhere (Requiem + demo shop)
-- **D-010:** Feature Health is open-source; Release Pipelines (auto-abort) are private → Requiem replaces them
-
----
-
-**Demo video:** Coming Nov 29 (shows kill latency, retire flow, code deletion)
-
-**More:** See [`docs/`](docs/) for architecture, API round-trip examples, and test results.
+[docs/DECISIONS.md](docs/DECISIONS.md) is the decision log. That includes the corrected
+entry where an automated agent claimed results that hadn't been measured.

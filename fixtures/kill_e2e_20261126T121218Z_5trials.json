@@ -1,0 +1,49 @@
+{
+  "what": "fault switched on -> Requiem kill (incident file) -> last 'new' checkout served",
+  "shoppers": 30,
+  "request_pause_s": 0.3,
+  "contract": "requiem.yaml new_checkout",
+  "trials": [
+    {
+      "trial": 1,
+      "fault_to_kill_s": 24.0,
+      "fault_to_last_new_checkout_served_s": 23.6,
+      "kill_to_last_new_checkout_served_s": -0.34,
+      "rollout_call_ms": 176.4,
+      "reason": "Killed by Requiem after 3 breached windows in a row. new: 34.8% errors over 1194 requests (ceiling 5%, control 0.0%)"
+    },
+    {
+      "trial": 2,
+      "fault_to_kill_s": 24.7,
+      "fault_to_last_new_checkout_served_s": 24.1,
+      "kill_to_last_new_checkout_served_s": -0.63,
+      "rollout_call_ms": 234.0,
+      "reason": "Killed by Requiem after 3 breached windows in a row. new: 33.9% errors over 1261 requests (ceiling 5%, control 0.0%)"
+    },
+    {
+      "trial": 3,
+      "fault_to_kill_s": 20.7,
+      "fault_to_last_new_checkout_served_s": 20.2,
+      "kill_to_last_new_checkout_served_s": -0.52,
+      "rollout_call_ms": 143.7,
+      "reason": "Killed by Requiem after 3 breached windows in a row. new: 30.2% errors over 1190 requests (ceiling 5%, control 0.0%)"
+    },
+    {
+      "trial": 4,
+      "fault_to_kill_s": 24.5,
+      "fault_to_last_new_checkout_served_s": 24.0,
+      "kill_to_last_new_checkout_served_s": -0.48,
+      "rollout_call_ms": 157.8,
+      "reason": "Killed by Requiem after 3 breached windows in a row. new: 37.8% errors over 1192 requests (ceiling 5%, control 0.0%)"
+    },
+    {
+      "trial": 5,
+      "fault_to_kill_s": 24.8,
+      "fault_to_last_new_checkout_served_s": 24.3,
+      "kill_to_last_new_checkout_served_s": -0.48,
+      "rollout_call_ms": 283.7,
+      "reason": "Killed by Requiem after 3 breached windows in a row. new: 32.2% errors over 1248 requests (ceiling 5%, control 0.0%)"
+    }
+  ],
+  "median_fault_to_kill_s": 24.5
+}

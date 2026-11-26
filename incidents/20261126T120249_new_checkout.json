@@ -1,0 +1,15 @@
+{
+  "flag": "new_checkout",
+  "experiment_id": 2,
+  "at": "2026-11-26T12:02:49.699+00:00",
+  "rollout_call_ms": 138.6,
+  "weights_kept_for_undo": {
+    "2": 50.0
+  },
+  "reason": "Killed by Requiem after 3 breached windows in a row. new: 26.5% errors over 1249 requests (ceiling 5%, control 0.0%)",
+  "windows": [
+    "new: 8.2% errors over 1270 requests (ceiling 5%, control 0.0%)",
+    "new: 18.4% errors over 1255 requests (ceiling 5%, control 0.0%)",
+    "new: 26.5% errors over 1249 requests (ceiling 5%, control 0.0%)"
+  ]
+}

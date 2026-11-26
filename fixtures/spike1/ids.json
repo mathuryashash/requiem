@@ -1,0 +1,12 @@
+{
+  "organisation": 3,
+  "project": 2,
+  "environment": 2,
+  "feature": 1,
+  "metric": 1,
+  "experiment": 1,
+  "variant_split": {
+    "green": 110,
+    "control": 90
+  }
+}

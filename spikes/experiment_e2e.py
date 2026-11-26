@@ -79,6 +79,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--token", required=True)
     ap.add_argument("--n", type=int, default=60, help="identities to enrol")
+    ap.add_argument("--prefix", default="user_", help="identity prefix (use a new one per run)")
     args = ap.parse_args()
     tok = args.token
     random.seed(7)
@@ -105,7 +106,8 @@ def main() -> None:
             "initial_value": "grey",
             "default_enabled": True,
             "multivariate_options": [
-                {"type": "unicode", "string_value": "green", "default_percentage_allocation": 50},
+                {"type": "unicode", "string_value": "green", "key": "green",
+                 "default_percentage_allocation": 50},
             ],
         }))
 
@@ -154,13 +156,15 @@ def main() -> None:
     variants: dict[str, str] = {}
     first = None
     for i in range(args.n):
-        ident = f"user_{i:03d}"
+        ident = f"{args.prefix}{i:03d}"
         status, body = call("GET", f"/identities/?identifier={ident}", env_key=ek)
         if first is None:
             first = body
             save("10_identity_flags_sample", status, body)
         flag = next((f for f in body.get("flags", []) if f["feature"]["name"] == "buy_button"), None)
-        variants[ident] = str(flag.get("feature_state_value")) if flag else "missing"
+        # The SDK sends flag.variant ("control" or the option's key) as the exposure value;
+        # results group by that key, so use it rather than the served value.
+        variants[ident] = (flag.get("variant") or "missing") if flag else "missing"
     counts: dict[str, int] = {}
     for v in variants.values():
         counts[v] = counts.get(v, 0) + 1
@@ -172,7 +176,7 @@ def main() -> None:
     for ident, v in variants.items():
         events.append({"event": "$flag_exposure", "feature_name": "buy_button", "identifier": ident,
                        "value": v, "timestamp": now_ms, "metadata": {"experiment_id": eid}})
-        p = 0.45 if v == "green" else 0.2
+        p = 0.45 if v == "green" else 0.2  # green converts more often, by design
         if random.random() < p:
             events.append({"event": "purchase", "identifier": ident, "timestamp": now_ms + 1000})
     must(call("POST", "/events/", env_key=ek, body={"events": events}, step="11_events"))

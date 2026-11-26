@@ -1,7 +1,7 @@
 {
   "status": 200,
   "body": {
-    "identifier": "user_000",
+    "identifier": "shopper_000",
     "traits": [],
     "flags": [
       {
@@ -21,7 +21,7 @@
         "feature_segment": 1,
         "enabled": true,
         "reason": "SPLIT; weight=50.0",
-        "variant": null,
+        "variant": "green",
         "metadata": {
           "experiment": {
             "id": 1,

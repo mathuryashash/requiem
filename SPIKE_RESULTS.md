@@ -1,4 +1,4 @@
-# Spike results (checked 26 Nov 2026, 16:50 IST)
+# Spike results (checked 26 Nov 2026, 17:00 IST)
 
 This file replaces the earlier Day-1 summaries. Those were written by an automated agent that
 claimed things it never ran: `fixtures/experimentation_proof.json` and `fixtures/kill_latency.json`
@@ -18,19 +18,37 @@ comes from `spikes/experiment_e2e.py` and the raw API responses it saved in
 | Metric `purchase` (occurrence, up) | Created | `06_metric.json` |
 | Experiment with a 100% rollout, 50/50 split | Created (201) and started (200) | `07_experiment.json`, `09_start.json` |
 | Identities enrolled through the public flags API | 120 identities: 65 green, 55 grey. Reason `SPLIT; weight=50.0` | `10_identity_flags_sample.json` |
-| Exposure and conversion events to `POST /api/v1/events/` | **404: "This environment does not store events in Flagsmith."** | `11_events.json` |
-| Results | Not reached yet | n/a |
+| Exposure and conversion events, first try | 404, "This environment does not store events in Flagsmith." The warehouse was created as `warehouse_type: "flagsmith"`, which is the Cloud-managed one. On self-hosted, the "Flagsmith database" warehouse is `warehouse_type: "postgres"` with `config: {"source": "flagsmith_database"}` (`is_flagsmith_database_config` in `experimentation/warehouses/postgres.py` inside the image). | first `11_events.json` (overwritten) |
+| Same, with the right warehouse | 202, 161 events accepted, 0 rejected. Warehouse status `connected`. | `05_warehouse.json` |
+| Variant keys | The flags API returned `variant: null` for green until the multivariate option got a `key` (`"green"`). Control comes back as `"control"`. Results group by these keys, so the exposure value has to be `flag.variant`, not the served value. | `10_identity_flags_sample.json` |
+| Results (second batch, 200 new identities, keys fixed) | Computed. Green vs control: lift **+101%**, 95% interval +22% to +181%, **chance to win 0.994**. | `15_results.json` |
 
-Why the events failed: the warehouse was created as `warehouse_type: "flagsmith"`, which is
-the Cloud-managed warehouse. On self-hosted, the "Flagsmith database" warehouse is
-`warehouse_type: "postgres"` with `config: {"source": "flagsmith_database"}` (see
-`is_flagsmith_database_config` in `experimentation/warehouses/postgres.py` inside the image).
-`spikes/experiment_e2e.py` now deletes the wrong connection and creates the right one, but it
-has not been re-run yet.
+The conversion rates were set by the script (green 45%, control 20%), so this shows the
+pipeline works. It says nothing about buttons. The first batch was labelled with served
+values ("grey"/"green") before the key fix and still shows up as a stray `grey` row. `green`
+n = 175 mixes both batches. SRM came back `null` and still needs checking.
 
-**Verdict so far: experiments can be created, started and split traffic on self-hosted.
-Event ingestion and results are NOT proven yet.** D-007 (Cloud fallback) stays open until
-the re-run either shows results or fails for a reason we can't fix.
+**Verdict: Experimentation works end to end on self-hosted open-source Flagsmith** (create,
+start, split, ingest, Bayesian results). D-007 (Cloud fallback) is not needed.
+
+## Kill primitive, measured
+
+`spikes/kill_latency.py`, 5 trials, same machine, remote evaluation: an experiment rollout
+PATCH to 0%, then the first flags API response that serves control to an identity that was
+in `green`.
+
+| trial | PATCH (ms) | until control served (ms) | restore visible (ms) |
+|---|---|---|---|
+| 1 | 95.2 | 128.1 | 32.8 |
+| 2 | 95.3 | 118.3 | 30.4 |
+| 3 | 99.7 | 127.4 | 28.8 |
+| 4 | 103.0 | 143.7 | 50.4 |
+| 5 | 73.9 | 117.0 | 41.2 |
+
+Median 127.4 ms. Control was served on the very first poll every time. This covers only the
+Flagsmith side: an SDK using local evaluation adds its polling interval (60 s by default),
+and the shop's own detection window comes on top of that. The end-to-end number gets
+measured with the shop on Day 2. Raw data: `16_kill_latency.json`.
 
 ## Spike 2: API client
 
@@ -45,6 +63,5 @@ rewritten against `spikes/experiment_e2e.py`, which is known to work up to the e
 
 - Feature Health webhook: not started.
 - Demo shop: `requiem/shop.py` is a skeleton, and its `/metrics` output is simulated.
-- Kill latency: not measured. There is no real number yet.
 - Code removal: the LibCST codemod is in `../spike/codemod` (outside this repo) and hasn't
   been brought in yet.

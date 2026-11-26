@@ -1,6 +1,7 @@
 {
-  "status": 404,
+  "status": 202,
   "body": {
-    "detail": "This environment does not store events in Flagsmith."
+    "accepted": 277,
+    "rejected": []
   }
 }

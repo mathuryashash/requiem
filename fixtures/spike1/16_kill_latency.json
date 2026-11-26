@@ -1,0 +1,43 @@
+{
+  "what": "rollout PATCH to 0% -> first flags API response serving control, same machine",
+  "identity": "user_000",
+  "trials": [
+    {
+      "trial": 1,
+      "patch_ms": 95.2,
+      "until_control_served_ms": 128.1,
+      "polls": 1,
+      "restore_visible_ms": 32.8
+    },
+    {
+      "trial": 2,
+      "patch_ms": 95.3,
+      "until_control_served_ms": 118.3,
+      "polls": 1,
+      "restore_visible_ms": 30.4
+    },
+    {
+      "trial": 3,
+      "patch_ms": 99.7,
+      "until_control_served_ms": 127.4,
+      "polls": 1,
+      "restore_visible_ms": 28.8
+    },
+    {
+      "trial": 4,
+      "patch_ms": 103.0,
+      "until_control_served_ms": 143.7,
+      "polls": 1,
+      "restore_visible_ms": 50.4
+    },
+    {
+      "trial": 5,
+      "patch_ms": 73.9,
+      "until_control_served_ms": 117.0,
+      "polls": 1,
+      "restore_visible_ms": 41.2
+    }
+  ],
+  "median_ms": 127.4,
+  "max_ms": 143.7
+}

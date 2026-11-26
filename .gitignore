@@ -1,0 +1,34 @@
+**/.env
+**/.env.local
+**/.env*.local
+**/venv/
+**/__pycache__/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/dist/
+**/build/
+**/*.egg-info/
+**/.DS_Store
+**/node_modules/
+**/.next/
+**/coverage/
+**/.coverage
+**/htmlcov/
+
+# Docker
+**/.dockerignore
+
+# Local development
+**/docker-compose.override.yml
+**/local_*.db
+**/logs/
+
+# IDE
+**/.vscode/
+**/.idea/
+**/*.swp
+**/*.swo
+
+# Fixtures should be committed (real payloads, scrubbed tokens)
+# fixtures/ is NOT ignored

@@ -1,0 +1,20 @@
+{
+  "what": "script-generated shoppers for the buy_button experiment",
+  "shoppers": 400,
+  "prefix": "rt1_",
+  "seed": 7,
+  "purchase_probability_chosen_by_script": {
+    "green": 0.45,
+    "control": 0.2
+  },
+  "served": {
+    "green": 186,
+    "control": 214
+  },
+  "purchases_sent": {
+    "green": 79,
+    "control": 53
+  },
+  "request_errors": 0,
+  "note": "conversion rates were chosen by this script; lift measured downstream reflects them"
+}

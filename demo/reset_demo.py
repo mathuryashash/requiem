@@ -42,7 +42,7 @@ def main(flags: list[str]) -> int:
         api._call("DELETE", f"/environments/{api.env}/experiments/{exp.id}/")
         print(f"{flag}: deleted experiment {exp.id} (was {exp.status})")
     cmd = [sys.executable, str(ROOT / "demo" / "setup_demo.py"), "--token", os.environ["FLAGSMITH_ADMIN_TOKEN"],
-           "--url", os.environ.get("FLAGSMITH_URL", "http://localhost:8000")]
+           "--url", os.environ.get("FLAGSMITH_URL", "http://localhost:8000"), "--only", *flags]
     out = subprocess.run(cmd, capture_output=True, text=True, check=True).stdout
     print("setup_demo ran (environment key / project id / webhook lines not shown)" if out else "setup_demo: no output")
     return 0

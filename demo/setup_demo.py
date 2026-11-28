@@ -9,7 +9,7 @@ experiments with a 50/50 split:
 Prints the values Requiem and the shop need (environment key, project id, webhook URL) as
 KEY=value lines for a .env file. Safe to run twice.
 
-Usage:  python demo/setup_demo.py --token <admin API token> [--url http://localhost:8000]
+Usage:  python demo/setup_demo.py --token <admin API token> [--url http://localhost:8000] [--only buy_button]
 """
 
 from __future__ import annotations
@@ -31,6 +31,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--token", required=True)
     ap.add_argument("--url", default="http://localhost:8000")
+    ap.add_argument("--only", nargs="*", help="flag names to set up (default: all); other experiments are not touched")
     args = ap.parse_args()
     base = args.url.rstrip("/") + "/api/v1"
 
@@ -77,6 +78,8 @@ def main() -> None:
         "POST", f"/projects/{proj['id']}/feature-health/providers/", {"name": "Webhook"})
 
     for f in FLAGS:
+        if args.only and f["name"] not in args.only:
+            continue
         feat = find(f"/projects/{proj['id']}/features/", f["name"]) or call(
             "POST", f"/projects/{proj['id']}/features/",
             {"name": f["name"], "type": "MULTIVARIATE", "initial_value": f["control"], "default_enabled": True,
@@ -93,18 +96,6 @@ def main() -> None:
                    "multivariate_feature_state_values": [
                        {"multivariate_feature_option": opt["id"], "percentage_allocation": 50}]}
         existing = find(f"/environments/{ek}/experiments/", f["experiment"])
-        if existing is None:
-            # Flagsmith checks the split (srm_p_value) against the ENVIRONMENT DEFAULT, not the
-            # experiment's rollout. A fresh option has 0% there, so results would carry srm_p_value
-            # null forever. Match the default to the 50/50 the rollout uses. (Also resets a flag
-            # that a completed experiment left serving one variant to everyone.)
-            fs = next((x for x in items(call("GET", f"/environments/{ek}/featurestates/?feature={feat['id']}"))
-                       if x.get("feature_segment") is None and x.get("identity") is None), None)
-            if fs:
-                call("PATCH", f"/environments/{ek}/featurestates/{fs['id']}/",
-                     {"enabled": True, "feature_state_value": f["control"],
-                      "multivariate_feature_state_values": [
-                          {"multivariate_feature_option": opt["id"], "percentage_allocation": 50}]})
         exp = existing or call(
             "POST", f"/environments/{ek}/experiments/",
             {"feature": feat["id"], "name": f["experiment"], "hypothesis": f["hypothesis"],
@@ -113,6 +104,23 @@ def main() -> None:
         if exp["status"] != "running":
             call("PATCH", f"/environments/{ek}/experiments/{exp['id']}/rollout/", rollout)
             call("POST", f"/environments/{ek}/experiments/{exp['id']}/start/")
+
+        if existing is None:
+            # Flagsmith checks the split (srm_p_value) against the ENVIRONMENT DEFAULT, not the
+            # experiment's rollout. Starting an experiment leaves 0% there, so results would carry
+            # srm_p_value null forever. Match the default to the 50/50 the rollout uses. This must
+            # come after the start. It also resets a flag that a completed experiment left serving
+            # one variant to everyone.
+            fs = next((x for x in items(call("GET", f"/environments/{ek}/featurestates/?feature={feat['id']}"))
+                       if x.get("feature_segment") is None and x.get("identity") is None), None)
+            if fs:
+                # PUT with the whole object: a PATCH of the multivariate values is accepted but ignored.
+                call("PUT", f"/environments/{ek}/featurestates/{fs['id']}/",
+                     {"id": fs["id"], "enabled": True, "feature_state_value": f["control"], "feature": fs["feature"],
+                      "environment": fs["environment"], "feature_segment": None, "identity": None,
+                      "multivariate_feature_state_values": [
+                          {"id": m["id"], "multivariate_feature_option": m["multivariate_feature_option"],
+                           "percentage_allocation": 50} for m in fs["multivariate_feature_state_values"]]})
 
     print(f"FLAGSMITH_ENVIRONMENT_KEY={ek}")
     print(f"FLAGSMITH_PROJECT_ID={proj['id']}")

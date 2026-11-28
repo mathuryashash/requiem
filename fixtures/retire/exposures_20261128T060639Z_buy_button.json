@@ -1,0 +1,23 @@
+{
+  "exposures": {
+    "as_of": "2026-11-28T06:06:37.204714Z",
+    "is_final": false,
+    "last_error_at": null,
+    "payload": {
+      "excluded_identities": 0,
+      "timeseries": {
+        "granularity": "hour",
+        "points": [
+          {
+            "bucket": "2026-11-28T06:00:00+00:00",
+            "new_identities": {
+              "control": 214,
+              "green": 186
+            }
+          }
+        ]
+      }
+    },
+    "refresh_requested_at": "2026-11-28T06:06:37.041498Z"
+  }
+}

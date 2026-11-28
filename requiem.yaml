@@ -4,6 +4,8 @@ check_every_seconds: 5
 flags:
   new_checkout:
     experiment: New checkout
+    owner: "@mathuryashash"   # who gets nagged (free text; shown in the NAG report)
+    dies_on: 2026-11-20      # OVERDUE ON PURPOSE so the NAG demo has something to fail on
     max_error_rate: 0.05     # the new checkout may fail at most 5% of requests
     min_gap: 0.02            # and must be at least 2 points worse than control to count
     min_requests: 20         # per window, before we judge at all
@@ -12,6 +14,8 @@ flags:
     on_breach: kill          # or "ask": write the incident note and wait for a human
   buy_button:
     experiment: Green buy button
+    owner: "@mathuryashash"
+    dies_on: 2026-12-05      # due soon on purpose: shows NAG's warning (no failure) path
     max_error_rate: 0.05
     min_gap: 0.02
     min_requests: 20

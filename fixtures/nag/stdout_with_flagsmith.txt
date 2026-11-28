@@ -1,0 +1,24 @@
+::error file=requiem.yaml,line=8,title=Overdue flag::Flag `new_checkout` (owner @mathuryashash) was due to die on 2026-11-20 and is 8 day(s) overdue. Retire it or move dies_on.
+::error file=demo/reset_demo.py,line=32,title=Overdue flag::`new_checkout` is referenced here and is overdue.
+::error file=demo/setup_demo.py,line=7,title=Overdue flag::`new_checkout` is referenced here and is overdue.
+::error file=demo/setup_demo.py,line=25,title=Overdue flag::`new_checkout` is referenced here and is overdue.
+::error file=deploy/grafana-provisioning/dashboards/requiem.json,line=39,title=Overdue flag::`new_checkout` is referenced here and is overdue.
+::error file=deploy/grafana-provisioning/dashboards/requiem.json,line=72,title=Overdue flag::`new_checkout` is referenced here and is overdue.
+::error file=deploy/grafana-provisioning/dashboards/requiem.json,line=84,title=Overdue flag::`new_checkout` is referenced here and is overdue.
+::error file=deploy/grafana-provisioning/dashboards/requiem.json,line=117,title=Overdue flag::`new_checkout` is referenced here and is overdue.
+::error file=deploy/grafana-provisioning/dashboards/requiem.json,line=129,title=Overdue flag::`new_checkout` is referenced here and is overdue.
+::error file=deploy/grafana-provisioning/dashboards/requiem.json,line=162,title=Overdue flag::`new_checkout` is referenced here and is overdue.
+::error file=deploy/spike1_bootstrap.py,line=55,title=Overdue flag::`new_checkout` is referenced here and is overdue.
+::warning file=requiem.yaml,line=18,title=Flag due soon::Flag `buy_button` (owner @mathuryashash) dies on 2026-12-05, in 7 day(s).
+::warning file=demo/reset_demo.py,line=3,title=Flag due soon::`buy_button` is referenced here and dies on 2026-12-05.
+::warning file=demo/reset_demo.py,line=32,title=Flag due soon::`buy_button` is referenced here and dies on 2026-12-05.
+::warning file=demo/setup_demo.py,line=6,title=Flag due soon::`buy_button` is referenced here and dies on 2026-12-05.
+::warning file=demo/setup_demo.py,line=12,title=Flag due soon::`buy_button` is referenced here and dies on 2026-12-05.
+::warning file=demo/setup_demo.py,line=23,title=Flag due soon::`buy_button` is referenced here and dies on 2026-12-05.
+::warning file=deploy/grafana-provisioning/dashboards/requiem.json,line=174,title=Flag due soon::`buy_button` is referenced here and dies on 2026-12-05.
+::warning file=deploy/grafana-provisioning/dashboards/requiem.json,line=207,title=Flag due soon::`buy_button` is referenced here and dies on 2026-12-05.
+::warning file=loadgen/run.py,line=14,title=Flag due soon::`buy_button` is referenced here and dies on 2026-12-05.
+::warning file=loadgen/run.py,line=16,title=Flag due soon::`buy_button` is referenced here and dies on 2026-12-05.
+::warning file=loadgen/run.py,line=161,title=Flag due soon::`buy_button` is referenced here and dies on 2026-12-05.
+overdue   new_checkout  dies_on=2026-11-20  owner=@mathuryashash  refs=40  flagsmith=flag exists; in experiment 'New checkout' (paused)
+due_soon  buy_button  dies_on=2026-12-05  owner=@mathuryashash  refs=52  flagsmith=flag exists; in experiment 'Green buy button' (running)

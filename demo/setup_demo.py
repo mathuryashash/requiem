@@ -27,18 +27,17 @@ FLAGS = [
 ]
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--token", required=True)
-    ap.add_argument("--url", default="http://localhost:8000")
-    ap.add_argument("--only", nargs="*", help="flag names to set up (default: all); other experiments are not touched")
-    args = ap.parse_args()
-    base = args.url.rstrip("/") + "/api/v1"
+def setup(url: str, token: str, only: list[str] | None = None) -> dict[str, str]:
+    """Create or reuse everything; return the env values Requiem and the shop need.
+
+    `only` limits the experiment step to the named flags; other experiments are not touched.
+    """
+    base = url.rstrip("/") + "/api/v1"
 
     def call(method: str, path: str, body=None):
         req = urllib.request.Request(base + path, method=method,
                                      data=json.dumps(body).encode() if body is not None else None,
-                                     headers={"Authorization": f"Token {args.token}",
+                                     headers={"Authorization": f"Token {token}",
                                               "Content-Type": "application/json"})
         try:
             with urllib.request.urlopen(req, timeout=30) as r:
@@ -78,7 +77,7 @@ def main() -> None:
         "POST", f"/projects/{proj['id']}/feature-health/providers/", {"name": "Webhook"})
 
     for f in FLAGS:
-        if args.only and f["name"] not in args.only:
+        if only and f["name"] not in only:
             continue
         feat = find(f"/projects/{proj['id']}/features/", f["name"]) or call(
             "POST", f"/projects/{proj['id']}/features/",
@@ -122,9 +121,18 @@ def main() -> None:
                           {"id": m["id"], "multivariate_feature_option": m["multivariate_feature_option"],
                            "percentage_allocation": 50} for m in fs["multivariate_feature_state_values"]]})
 
-    print(f"FLAGSMITH_ENVIRONMENT_KEY={ek}")
-    print(f"FLAGSMITH_PROJECT_ID={proj['id']}")
-    print(f"FLAGSMITH_HEALTH_WEBHOOK={hook['webhook_url']}")
+    return {"FLAGSMITH_ENVIRONMENT_KEY": ek, "FLAGSMITH_PROJECT_ID": str(proj["id"]),
+            "FLAGSMITH_HEALTH_WEBHOOK": hook["webhook_url"]}
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--token", required=True)
+    ap.add_argument("--url", default="http://localhost:8000")
+    ap.add_argument("--only", nargs="*", help="flag names to set up (default: all); other experiments are not touched")
+    args = ap.parse_args()
+    for k, v in setup(args.url, args.token, args.only).items():
+        print(f"{k}={v}")
 
 
 if __name__ == "__main__":

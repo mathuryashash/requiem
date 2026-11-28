@@ -1,3 +1,5 @@
 # Approval is bound to the sha256 of the memo file bytes, so git must never rewrite line endings in them.
 retirements/*.json -text
 fixtures/retire/*.json -text
+*.sh text eol=lf
+deploy/*.Dockerfile text eol=lf

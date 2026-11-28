@@ -1,0 +1,26 @@
+# Example: run Requiem NAG on every pull request and every Monday.
+# Copy this file into your repo and replace `./` with `mathuryashash/requiem@v1` (or the tag you pin).
+name: Requiem NAG
+
+on:
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1"   # Mondays 06:00 UTC: catches flags that expire while nobody opens a PR
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write           # only needed for open-issue
+
+jobs:
+  nag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./
+        with:
+          config: requiem.yaml
+          warn-days: "14"
+          fail-on-overdue: "true"
+          # Opens or updates one issue per overdue flag, but only on the weekly run so PRs stay quiet.
+          open-issue: ${{ github.event_name == 'schedule' }}

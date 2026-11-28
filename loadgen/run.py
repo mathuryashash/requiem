@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import threading
@@ -36,7 +37,7 @@ from pathlib import Path
 import httpx
 
 ROOT = Path(__file__).resolve().parent.parent
-SHOP = "http://127.0.0.1:8090"
+SHOP = os.getenv("SHOP_URL", "http://127.0.0.1:8090")
 
 
 class Load:
@@ -189,7 +190,7 @@ def main() -> None:
     else:
         load = Load()
         pool = load.start()
-        time.sleep(args.seconds)
+        time.sleep(args.seconds if args.seconds > 0 else 10**9)  # 0 = run until stopped
         load.stop.set()
         pool.shutdown(wait=True)
         print(f"{len(load.log)} requests")

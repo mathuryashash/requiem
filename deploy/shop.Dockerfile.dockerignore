@@ -1,0 +1,5 @@
+*
+!shop
+!deploy/with-env.sh
+!deploy/requirements-shop.txt
+**/__pycache__

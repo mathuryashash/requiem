@@ -44,7 +44,9 @@ def load_env(path: Path = ROOT / ".env") -> None:
 
 def load_contracts(path: Path = ROOT / "requiem.yaml") -> tuple[list[Contract], float]:
     cfg = yaml.safe_load(path.read_text(encoding="utf-8"))
-    contracts = [Contract(flag=name, **spec) for name, spec in (cfg.get("flags") or {}).items()]
+    # `owner` and `dies_on` belong to NAG (requiem/nag.py); the kill contract does not use them.
+    contracts = [Contract(flag=name, **{k: v for k, v in spec.items() if k not in ("owner", "dies_on")})
+                 for name, spec in (cfg.get("flags") or {}).items()]
     return contracts, float(cfg.get("check_every_seconds", 10))
 
 

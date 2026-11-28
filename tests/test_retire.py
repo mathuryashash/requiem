@@ -138,8 +138,17 @@ def test_contract_accepts_owner_dies_on_and_retire():
 
 def test_repo_requiem_yaml_loads():
     from requiem.service import load_contracts
-    contracts, _ = load_contracts(ROOT / "requiem.yaml")
-    assert any(c.retire for c in contracts)
+    contracts, _ = load_contracts(ROOT / "requiem.yaml")  # still loads once a flag's entry is retired
+    assert all(c.flag and c.experiment for c in contracts)
+
+
+def test_loader_reads_the_new_optional_keys(tmp_path):
+    from requiem.service import load_contracts
+    f = tmp_path / "r.yaml"
+    f.write_text("flags:\n  x:\n    experiment: X\n    owner: '@me'\n    dies_on: 2026-12-15\n"
+                 "    retire:\n      metric: purchase\n      code: a.py\n", encoding="utf-8")
+    (c,), _ = load_contracts(f)
+    assert (c.owner, c.dies_on, c.retire["code"]) == ("@me", "2026-12-15", "a.py")
 
 
 # ---- memo + hash binding

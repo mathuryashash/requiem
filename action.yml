@@ -1,0 +1,50 @@
+name: Requiem NAG
+description: Fail the check when a feature flag is past its dies_on date, and list every reference to it.
+author: Requiem
+branding:
+  icon: clock
+  color: red
+
+inputs:
+  config:
+    description: Path to the requiem.yaml that lists flags with owner and dies_on.
+    default: requiem.yaml
+  warn-days:
+    description: Flags due within this many days get a warning annotation.
+    default: "14"
+  fail-on-overdue:
+    description: '"true" fails the job when a flag is overdue; "false" only annotates.'
+    default: "true"
+  scan-root:
+    description: Directory to scan for flag references.
+    default: .
+  open-issue:
+    description: '"true" opens or updates one GitHub issue per overdue flag (needs `issues: write` and GH_TOKEN).'
+    default: "false"
+  github-token:
+    description: Token for `gh`, only used when open-issue is true.
+    default: ${{ github.token }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+    - name: Install NAG's dependencies
+      shell: bash
+      run: python -m pip install --disable-pip-version-check pyyaml httpx
+    - name: Run NAG
+      shell: bash
+      env:
+        PYTHONPATH: ${{ github.action_path }}
+        GH_TOKEN: ${{ inputs.github-token }}
+        NAG_CONFIG: ${{ inputs.config }}
+        NAG_WARN_DAYS: ${{ inputs.warn-days }}
+        NAG_FAIL: ${{ inputs.fail-on-overdue }}
+        NAG_ROOT: ${{ inputs.scan-root }}
+        NAG_OPEN_ISSUE: ${{ inputs.open-issue }}
+      run: |
+        args=(--config "$NAG_CONFIG" --root "$NAG_ROOT" --warn-days "$NAG_WARN_DAYS" --fail-on-overdue "$NAG_FAIL")
+        if [ "$NAG_OPEN_ISSUE" = "true" ]; then args+=(--open-issue); fi
+        python -m requiem.nag "${args[@]}"

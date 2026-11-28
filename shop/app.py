@@ -8,6 +8,9 @@ Flags are evaluated remotely with get_experiment_flag(), which also records the 
 Every request is one OpenTelemetry span tagged flag.key / flag.variant; the collector's
 spanmetrics connector turns those into per-variant request and error counters in Prometheus.
 
+Each experiment flag drives a real code branch (`if variant == ...`), which is what the RETIRE
+codemod (requiem/codemod.py) deletes once the experiment is decided.
+
 The traffic is load-generated (loadgen/run.py), not real users. The README says so.
 """
 
@@ -78,7 +81,11 @@ def product(user: str) -> dict:
         span.set_attribute("flag.key", "buy_button")
         span.set_attribute("flag.variant", variant)
         span.set_attribute("http.route", "/api/product")
-        return {"user": user, "button_colour": value, "variant": variant}
+        if variant == "green":
+            button = {"colour": "green", "label": "Buy now"}
+        else:
+            button = {"colour": "grey", "label": "Add to cart"}
+        return {"user": user, "button_colour": button["colour"], "label": button["label"], "variant": variant}
 
 
 @app.post("/api/checkout")
@@ -94,7 +101,11 @@ def checkout(user: str) -> dict:
             span.set_status(Status(StatusCode.ERROR, "new checkout failed"))
             raise HTTPException(status_code=500, detail="checkout failed")
         flagsmith.track_event("purchase", identifier=user)
-        return {"user": user, "checkout": value, "variant": variant, "ok": True}
+        if variant == "new":
+            steps = ["cart", "pay"]  # the one-page checkout
+        else:
+            steps = ["cart", "address", "pay"]
+        return {"user": user, "checkout": value, "variant": variant, "steps": steps, "ok": True}
 
 
 @app.post("/admin/fault")

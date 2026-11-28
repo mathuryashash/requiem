@@ -2,6 +2,9 @@
 
   python -m requiem.service run              # loop forever (Ctrl+C to stop)
   python -m requiem.service undo new_checkout  # put the experiment back as it was
+  python -m requiem.service retire buy_button  # RETIRE: read results, write the decision memo, change nothing
+  python -m requiem.service approve buy_button --memo <sha256 prefix> [--open-pr]
+  python -m requiem.service open-pr buy_button # push the retire branch and run `gh pr create`
 
 Settings come from requiem.yaml (contracts) and environment variables / .env:
 FLAGSMITH_URL, FLAGSMITH_ADMIN_TOKEN, FLAGSMITH_ENVIRONMENT_KEY, FLAGSMITH_PROJECT_ID,
@@ -193,8 +196,44 @@ def main(argv: list[str]) -> int:
         undo(api_from_env(), c)
         print(f"undone: {c.flag} back to a 100% rollout, experiment running, flag healthy")
         return 0
+    if len(argv) >= 2 and argv[0] in ("retire", "approve", "open-pr"):
+        return retire_cli(argv)
     print(__doc__)
     return 2
+
+
+def retire_cli(argv: list[str]) -> int:
+    from requiem import retire_flow as rf  # imported late: KILL does not need libcst
+
+    cmd, flag, rest = argv[0], argv[1], argv[2:]
+    contracts, _ = load_contracts()
+    c = next((c for c in contracts if c.flag == flag), None)
+    if c is None:
+        print(f"no contract for {flag!r} in requiem.yaml")
+        return 2
+    if cmd == "open-pr":
+        rec = sorted((rf.FIXTURES).glob(f"approve_*_{flag}.json"))[-1]
+        data = json.loads(rec.read_text(encoding="utf-8"))
+        memo = json.loads((rf.RETIREMENTS / data["memo_file"]).read_text(encoding="utf-8"))
+        print(rf.open_pull_request(data["git"]["branch"], ROOT / data["pr_body"], flag, memo))
+        return 0
+    api = api_from_env()
+    if cmd == "retire":
+        md, js, memo = rf.make_memo(api, c, refresh="--no-refresh" not in rest)
+        print(md.read_text(encoding="utf-8"))
+        print(f"memo: {md.relative_to(ROOT)} / {js.relative_to(ROOT)}")
+        print(f"nothing has been changed. To approve: python -m requiem.service approve {flag} --memo "
+              f"{rf.R.memo_sha256(memo)[:12]}" if memo["plan_on_approval"] else "decision is not actionable; nothing to approve")
+        return 0
+    if "--memo" not in rest or rest.index("--memo") + 1 >= len(rest):
+        print("approve needs --memo <sha256 prefix of the memo json>")
+        return 2
+    rec = rf.approve(api, c, rest[rest.index("--memo") + 1], open_pr="--open-pr" in rest)
+    print(json.dumps({k: rec[k] for k in ("flag", "memo_sha256", "flagsmith", "codemod", "tests")}, indent=2))
+    print("branch:", rec["git"]["branch"], "commit:", rec["git"]["commit"][:10])
+    print(rec["git"]["diff_stat"])
+    print("PR body:", rec["pr_body"], "(nothing pushed)" if "pr_url" not in rec else rec["pr_url"])
+    return 0
 
 
 if __name__ == "__main__":

@@ -92,7 +92,20 @@ def main() -> None:
                    "feature_state_value": {"type": "string", "value": f["control"]},
                    "multivariate_feature_state_values": [
                        {"multivariate_feature_option": opt["id"], "percentage_allocation": 50}]}
-        exp = find(f"/environments/{ek}/experiments/", f["experiment"]) or call(
+        existing = find(f"/environments/{ek}/experiments/", f["experiment"])
+        if existing is None:
+            # Flagsmith checks the split (srm_p_value) against the ENVIRONMENT DEFAULT, not the
+            # experiment's rollout. A fresh option has 0% there, so results would carry srm_p_value
+            # null forever. Match the default to the 50/50 the rollout uses. (Also resets a flag
+            # that a completed experiment left serving one variant to everyone.)
+            fs = next((x for x in items(call("GET", f"/environments/{ek}/featurestates/?feature={feat['id']}"))
+                       if x.get("feature_segment") is None and x.get("identity") is None), None)
+            if fs:
+                call("PATCH", f"/environments/{ek}/featurestates/{fs['id']}/",
+                     {"enabled": True, "feature_state_value": f["control"],
+                      "multivariate_feature_state_values": [
+                          {"multivariate_feature_option": opt["id"], "percentage_allocation": 50}]})
+        exp = existing or call(
             "POST", f"/environments/{ek}/experiments/",
             {"feature": feat["id"], "name": f["experiment"], "hypothesis": f["hypothesis"],
              "metrics": [{"metric": metric["id"], "expected_direction": "increase"}],

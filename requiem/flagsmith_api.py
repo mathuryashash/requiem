@@ -137,8 +137,33 @@ class FlagsmithAPI:
     def start(self, experiment_id: int) -> dict:
         return self._call("POST", f"/environments/{self.env}/experiments/{experiment_id}/start/")
 
-    def complete(self, experiment_id: int) -> dict:
-        return self._call("POST", f"/environments/{self.env}/experiments/{experiment_id}/complete/")
+    def complete(self, experiment_id: int, decision: str, variant_option_id: int | None = None) -> dict:
+        """End the experiment for good and set what the flag serves from now on.
+
+        `decision` is control | variant | disable. For `variant`, `variant_option_id` is the
+        multivariate option that gets 100% (Flagsmith writes it to the environment default and
+        removes the rollout override). Body shape read from the instance's swagger
+        (ExperimentRolloutDecision) and experimentation/services.py.
+        """
+        body: dict[str, Any] = {"rollout_decision": decision}
+        if decision == "variant":
+            body["rollout_variant"] = variant_option_id
+        self.last_complete_request = body
+        return self._call("POST", f"/environments/{self.env}/experiments/{experiment_id}/complete/", body)
+
+    def experiment(self, experiment_id: int) -> dict:
+        return self._call("GET", f"/environments/{self.env}/experiments/{experiment_id}/")
+
+    def results_raw(self, experiment_id: int) -> dict:
+        """The whole GET .../results/ body, so it can be saved as evidence."""
+        return self._call("GET", f"/environments/{self.env}/experiments/{experiment_id}/results/")
+
+    def exposures_raw(self, experiment_id: int) -> dict:
+        """GET .../exposures/: carries `excluded_identities` (people who saw two variants)."""
+        return self._call("GET", f"/environments/{self.env}/experiments/{experiment_id}/exposures/")
+
+    def refresh_exposures(self, experiment_id: int) -> None:
+        self._call("POST", f"/environments/{self.env}/experiments/{experiment_id}/exposures/refresh/")
 
     def results(self, experiment_id: int) -> dict | None:
         body = self._call("GET", f"/environments/{self.env}/experiments/{experiment_id}/results/")

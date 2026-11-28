@@ -9,7 +9,17 @@ the same variant until Requiem changes it. This is load-generated traffic, not r
 break the new checkout (fault on), then time two moments:
   t_kill  Requiem's incident file appears (it decided and called the Flagsmith API)
   t_safe  the first second after which no shopper is served the new checkout any more
-Then fault off, and the next trial. Results go to fixtures/kill_e2e_<UTC time>_<n>trials.json.
+Then fault off, and the next trial.
+
+  python loadgen/run.py convert --shoppers 400 --prefix rt1_   # traffic for the buy_button RETIRE run
+
+`convert` is how the buy_button experiment gets its evidence. Each shopper has a fixed identity,
+views the product page once (that is the exposure; the shop reports which button they were
+served), then buys or not. THE SCRIPT DECIDES WHO BUYS: green-button shoppers buy with
+probability --rate-green (default 0.45), grey-button shoppers with --rate-control (default 0.20),
+drawn from a random generator seeded by --seed and the identity. So the lift Flagsmith reports
+afterwards measures this script's choices, not human behaviour. It proves the pipeline
+(exposure, conversion, results, SRM, decision), not that green buttons sell more. Results go to fixtures/kill_e2e_<UTC time>_<n>trials.json.
 """
 
 from __future__ import annotations
@@ -126,6 +136,38 @@ def measure(trials: int, flag: str = "new_checkout") -> None:
     print("wrote", path.relative_to(ROOT), flush=True)
 
 
+def convert(shoppers: int, prefix: str, seed: int, rate_green: float, rate_control: float) -> None:
+    import random
+
+    served = {"green": 0, "control": 0}
+    bought = {"green": 0, "control": 0}
+    errors = 0
+    with httpx.Client(timeout=15) as c:
+        for i in range(shoppers):
+            user = f"{prefix}{i:04d}"
+            rng = random.Random(f"{seed}:{user}")
+            try:
+                v = c.get(f"{SHOP}/api/product", params={"user": user}).json()["variant"]
+            except (httpx.HTTPError, KeyError, ValueError):
+                errors += 1
+                continue
+            v = "green" if v == "green" else "control"
+            served[v] += 1
+            if rng.random() < (rate_green if v == "green" else rate_control):
+                if c.post(f"{SHOP}/api/checkout", params={"user": user}).status_code == 200:
+                    bought[v] += 1
+    time.sleep(6)  # the shop's Flagsmith SDK flushes events every 2 s
+    out = {"what": "script-generated shoppers for the buy_button experiment", "shoppers": shoppers, "prefix": prefix,
+           "seed": seed, "purchase_probability_chosen_by_script": {"green": rate_green, "control": rate_control},
+           "served": served, "purchases_sent": bought, "request_errors": errors,
+           "note": "conversion rates were chosen by this script; lift measured downstream reflects them"}
+    path = ROOT / "fixtures" / "retire" / f"loadgen_{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}_{prefix.strip('_')}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(out, indent=2), encoding="utf-8")
+    print(json.dumps(out, indent=2))
+    print("wrote", path.relative_to(ROOT))
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -133,8 +175,16 @@ def main() -> None:
     m.add_argument("--trials", type=int, default=5)
     r = sub.add_parser("run")
     r.add_argument("--seconds", type=float, default=60)
+    cv = sub.add_parser("convert")
+    cv.add_argument("--shoppers", type=int, default=400)
+    cv.add_argument("--prefix", default="rt_")
+    cv.add_argument("--seed", type=int, default=7)
+    cv.add_argument("--rate-green", type=float, default=0.45)
+    cv.add_argument("--rate-control", type=float, default=0.20)
     args = ap.parse_args()
-    if args.cmd == "measure":
+    if args.cmd == "convert":
+        convert(args.shoppers, args.prefix, args.seed, args.rate_green, args.rate_control)
+    elif args.cmd == "measure":
         measure(args.trials)
     else:
         load = Load()

@@ -11,6 +11,7 @@ windows in a row. A breach needs all three:
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 
 CONTROL = "control"
@@ -26,8 +27,21 @@ class Contract:
     breach_windows: int = 3
     window_seconds: int = 30
     on_breach: str = "kill"  # "kill" acts at once; "ask" only writes the incident note
+    # Keys that only matter to other parts of Requiem. KILL reads and ignores them.
+    owner: str | None = None  # who gets nagged (NAG)
+    dies_on: str | None = None  # YYYY-MM-DD decide-or-delete date (NAG)
+    retire: dict | None = None  # RETIRE: metric, win_probability, code, traffic (see requiem/retire.py)
 
     def __post_init__(self) -> None:
+        if self.owner is not None and not isinstance(self.owner, str):
+            raise ValueError("owner must be a string")
+        if self.dies_on is not None:
+            # YAML turns an unquoted 2026-12-15 into a date; keep it as the plain string.
+            object.__setattr__(self, "dies_on", str(self.dies_on))
+            if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", self.dies_on):
+                raise ValueError("dies_on must look like YYYY-MM-DD")
+        if self.retire is not None and not isinstance(self.retire, dict):
+            raise ValueError("retire must be a mapping")
         if not 0 < self.max_error_rate < 1:
             raise ValueError("max_error_rate must be between 0 and 1")
         if self.breach_windows < 1 or self.min_requests < 1:

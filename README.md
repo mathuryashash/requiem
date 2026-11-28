@@ -16,8 +16,69 @@ The hacking window was 26 Nov 08:00 IST to 29 Nov 20:00 IST. The first commit is
 | KILL: contract in `requiem.yaml`, 3 breached windows in a row, then rollout to 0%, pause, Feature Health "Unhealthy", Grafana annotation, incident note | Works, measured below | `requiem/decide.py`, `requiem/service.py`, `incidents/` |
 | Undo | Works | `python -m requiem.service undo new_checkout` |
 | Grafana dashboard (per-variant error rate, requests, p95, kill annotations) | Provisioned | `deploy/grafana-provisioning/`, [screenshot](docs/grafana_kill.png) |
-| RETIRE (results, decision memo, approval, PR that deletes the losing code) | Not built yet (Day 3) | the LibCST codemod is prototyped outside this repo |
+| RETIRE: read Flagsmith's results, decide WIN / LOSE / INCONCLUSIVE / SRM-BLOCK, write a decision memo, wait for approval | Works once, live (28 Nov): `buy_button` came back WIN, chance to win 0.9977, lift +71.5%, `srm_p_value` 0.1615. The conversions were script-generated (see below) | `requiem/retire.py`, `retirements/20261128T060639Z_buy_button.md`, `fixtures/retire/results_*.json` |
+| RETIRE: approve, complete the experiment, serve the winner to everyone, delete the losing code on a local branch | Works once, live. Nothing was pushed and no PR was opened: opening it is a separate `--open-pr` step that has not been run | `fixtures/retire/approve_20261128T060742Z_buy_button.json`, branch `retire/buy_button-20261128T060742Z`, `retirements/*_PR.md` |
+| LibCST codemod (`variant, value = _variant("flag", user)` plus `if variant == ...` chains, boolean `is_feature_enabled` ifs) | Works on the shop's patterns; refuses and lists anything else. Python only | `requiem/codemod.py`, `tests/test_codemod.py` |
 | NAG GitHub Action (`dies_on`) | Not built yet (Day 3) | n/a |
+
+## Retire it (28 Nov)
+
+The other half of the lifecycle. `buy_button` is a green-vs-grey button experiment. The shop
+asks Flagsmith which button a shopper gets (`variant, value = _variant("buy_button", user)`) and
+branches on it. When the experiment has an answer, Requiem reads it, writes it up, waits for a
+human, and then removes the flag from the code.
+
+**What was run, and what it shows.** `python loadgen/run.py convert --shoppers 400` sent 400
+shoppers with fixed identities through the shop. 186 were served green and 214 grey. **The
+script decides who buys**: green shoppers buy with probability 0.45, grey with 0.20 (drawn
+from a seeded random generator, `fixtures/retire/loadgen_*_rt1.json`). So the lift Flagsmith
+reported (+71.5%, 95% interval +22% to +121%, chance to win 0.9977) comes from those numbers,
+not from anyone liking a button. What it does show is that the whole path works against a
+self-hosted Flagsmith: exposures, purchase events, Flagsmith's own results and `srm_p_value`
+(0.1615: the split was fine), the decision, completing the experiment, and the code edit.
+
+How the decision is made (`requiem/retire.py`; every threshold has a comment saying why, and
+`docs/DECISIONS.md` D-013 lists them): Flagsmith does the statistics and Requiem only applies
+rules to its numbers.
+
+- **SRM-BLOCK** if Flagsmith's `srm_p_value` is under 0.001, or more than 5% of exposed identities
+  saw two variants and were excluded. Checked first, because a broken split makes the rest meaningless.
+- **INCONCLUSIVE** if any variant has fewer than 50 identities or 5 conversions (Flagsmith's own
+  floors), or if the best variant's chance to win is between 0.05 and 0.95.
+- **WIN** at chance to win >= 0.95, **LOSE** (keep control) at <= 0.05.
+- Only WIN and LOSE can be approved.
+
+```bash
+# Needs: libcst (pip install libcst), the stack up, the shop running, a running experiment with data
+python -m requiem.service retire buy_button        # refreshes results, writes retirements/<ts>_buy_button.{md,json}, changes nothing
+python -m requiem.service approve buy_button --memo <first 8+ hex of the memo's sha256>
+python -m requiem.service approve buy_button --memo <sha> --open-pr   # also pushes the branch and runs `gh pr create`
+```
+
+The memo is a template filled by code; no model writes any of it. Its `.json` is hashed
+(sha256 of the exact file bytes, which `.gitattributes` keeps from being rewritten by line-ending
+conversion), and `approve` only works on a file whose hash starts with what you typed.
+`approve` then, in this order: makes a temporary git worktree on a new branch `retire/<flag>-<ts>`;
+runs the codemod on the committed code and drops the flag's entry from `requiem.yaml`; compiles it
+and runs the whole test suite there; commits; and only then calls Flagsmith
+(`POST .../experiments/{id}/complete/` with `rollout_decision: variant`, which makes the winner the
+environment default for everyone and removes the rollout override). If the codemod meets a pattern
+it does not understand, or a test fails, it stops before touching Flagsmith. The branch for the live
+run changes two files (`shop/app.py`: -8 +2 lines, `requiem.yaml`: the entry), and Flagsmith served
+`green` to 12 of 12 checked identities afterwards (`served_after_complete` in the approve record).
+
+Codemod limits, stated plainly: Python only; it understands `==`/`!=` against string literals on
+the variant or value (with `elif`/`else`), and boolean `is_feature_enabled` ifs. It will not
+touch a condition like `variant == "green" and user.vip`, a `match`, a one-line `if x: y`, a
+re-assigned variable, or the flag key used any other way; those are listed in the report and block
+the approval. After a retire, `_variant()` may be unused; it is not deleted.
+
+**Reset to run it again:** `python demo/reset_demo.py buy_button` (deletes the experiment, even a
+completed one, and creates and starts a fresh one; its results window starts from now). Then
+`git restore shop/app.py requiem.yaml` if you had merged the retire branch, and delete old
+`retire/*` branches. Before the first live run the demo's environment default split was 0%,
+which is why Flagsmith returned `srm_p_value: null` in the Day-1 spike; `demo/setup_demo.py` now sets
+it to 50/50 after starting an experiment (`reset_demo.py` runs it).
 
 ## Measured: how fast a broken variant gets killed
 
@@ -81,7 +142,9 @@ one-command `docker compose up` with the shop and Requiem inside it is still to 
 
 ## Tests
 
-`python -m pytest -q tests`: the breach rules (ceiling, minimum traffic, the control gap,
+`python -m pytest -q tests`: the retire rules (including SRM block, too few samples, hash
+binding of the memo), the codemod's golden cases, idempotency and compile checks on the real shop,
+and the breach rules (ceiling, minimum traffic, the control gap,
 consecutive windows, bad contracts), the Flagsmith client against payload shapes recorded
 from the live API, and the Prometheus parsing.
 

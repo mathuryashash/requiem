@@ -1,5 +1,10 @@
 # Spike results (checked 26 Nov 2026, 17:00 IST)
 
+> Day-1 record, kept as it was. Some of it is out of date: the client it calls "not verified"
+> was replaced on Day 2 by `requiem/flagsmith_api.py` (built on the verified paths), the demo
+> shop is now `shop/app.py` with real OpenTelemetry metrics, and the codemod lives in
+> `requiem/codemod.py`. The README has the current state.
+
 This file replaces the earlier Day-1 summaries. Those were written by an automated agent that
 claimed things it never ran: `fixtures/experimentation_proof.json` and `fixtures/kill_latency.json`
 were hand-written (the latency script said "simulated" in its own docstring), and no

@@ -6,7 +6,7 @@ Built for Toggle Wars (WeMakeDevs x Flagsmith), Track 3: Build on Open Source Fl
 The hacking window was 26 Nov 08:00 IST to 29 Nov 20:00 IST. The first commit is from 26 Nov
 14:50 IST, and nothing in this repo predates the window.
 
-## What works today (26 Nov)
+## What works (28 Nov)
 
 | Piece | State | Evidence |
 |---|---|---|
@@ -19,7 +19,8 @@ The hacking window was 26 Nov 08:00 IST to 29 Nov 20:00 IST. The first commit is
 | RETIRE: read Flagsmith's results, decide WIN / LOSE / INCONCLUSIVE / SRM-BLOCK, write a decision memo, wait for approval | Works once, live (28 Nov): `buy_button` came back WIN, chance to win 0.9977, lift +71.5%, `srm_p_value` 0.1615. The conversions were script-generated (see below) | `requiem/retire.py`, `retirements/20261128T060639Z_buy_button.md`, `fixtures/retire/results_*.json` |
 | RETIRE: approve, complete the experiment, serve the winner to everyone, delete the losing code on a local branch | Works once, live. Nothing was pushed and no PR was opened: opening it is a separate `--open-pr` step that has not been run | `fixtures/retire/approve_20261128T060742Z_buy_button.json`, branch `retire/buy_button-20261128T060742Z`, `retirements/*_PR.md` |
 | LibCST codemod (`variant, value = _variant("flag", user)` plus `if variant == ...` chains, boolean `is_feature_enabled` ifs) | Works on the shop's patterns; refuses and lists anything else. Python only | `requiem/codemod.py`, `tests/test_codemod.py` |
-| NAG GitHub Action (`dies_on`) | Not built yet (Day 3) | n/a |
+| NAG: `owner` and `dies_on` per flag; fails the build past the date and lists every file:line that still uses the flag | Works locally (real run below). The GitHub Action wrapper (`action.yml`) has not run on GitHub yet | `requiem/nag.py`, `action.yml`, `.github/workflows/requiem-nag.yml`, `fixtures/nag/` |
+| One-command quickstart: `docker compose up` brings up Flagsmith, the shop, Requiem and a bootstrap step that creates the experiments | Works on a fresh compose project (ports shifted, warm Docker cache) | [docs/QUICKSTART.md](docs/QUICKSTART.md), [docs/QUICKSTART_TEST.md](docs/QUICKSTART_TEST.md) |
 
 ## Retire it (28 Nov)
 
@@ -80,6 +81,29 @@ completed one, and creates and starts a fresh one; its results window starts fro
 which is why Flagsmith returned `srm_p_value: null` in the Day-1 spike; `demo/setup_demo.py` now sets
 it to 50/50 after starting an experiment (`reset_demo.py` runs it).
 
+## Nag it (28 Nov)
+
+A flag nobody decides on should not live forever. Each flag in `requiem.yaml` can carry an
+`owner:` and a `dies_on: YYYY-MM-DD`. `python -m requiem.nag` reads them and:
+
+- prints GitHub annotations: `::error` on the `dies_on` line and on each line of code that still
+  mentions an overdue flag, `::warning` for flags due within 14 days (`--warn-days`);
+- writes a table to the job summary when `$GITHUB_STEP_SUMMARY` is set;
+- exits 1 if any flag is overdue or has a date it cannot read.
+
+It scans only files git tracks (or would track), skips prose files unless `--include-docs`, and
+with Flagsmith credentials in the environment it also says, using GET calls only, whether the
+flag still exists and which experiment it is in. `--open-issue` would open one GitHub issue per
+overdue flag through `gh`; it is off by default and has not been run against GitHub.
+
+In this repo `new_checkout` is overdue on purpose (`dies_on: 2026-11-20`), so NAG fails here.
+The real output of that run is in `fixtures/nag/` (exit code 1; 40 references for `new_checkout`,
+including the shop, the Grafana dashboard, the load generator and the tests).
+
+Other repos can use it as a step: `uses: mathuryashash/requiem@<tag>` with inputs `config`,
+`warn-days`, `fail-on-overdue`, `scan-root` and `open-issue` (see `action.yml` and the example
+workflow).
+
 ## Measured: how fast a broken variant gets killed
 
 `loadgen/run.py measure` runs 30 shoppers with fixed identities against the shop. It turns on
@@ -122,7 +146,19 @@ This is load-generated traffic on one laptop, not real users.
   - Multivariate options need a `key`, otherwise the flags API returns `variant: null`.
   - The experiment list nests the whole feature.
 
-## Run it (local, Windows or Linux)
+## Run it
+
+One command, everything in Docker (details, ports and clean-up in [docs/QUICKSTART.md](docs/QUICKSTART.md)):
+
+```bash
+git clone https://github.com/mathuryashash/requiem && cd requiem/deploy
+docker compose up --detach --build
+docker compose --profile loadgen up --detach loadgen      # simulated shoppers, opt-in
+curl -X POST localhost:8090/admin/fault -H 'content-type: application/json' -d '{"enabled":true,"rate":0.5}'
+docker compose logs -f requiem                            # three breached windows, then KILLED new_checkout
+```
+
+Or run the shop and Requiem on the host (Python 3.12; this is how the measurements above were taken):
 
 ```bash
 # 1. Flagsmith, Postgres, task processor, OTel collector, Prometheus, Grafana
@@ -137,12 +173,12 @@ python -m requiem.service run
 python loadgen/run.py measure --trials 1
 ```
 
-Grafana runs at http://localhost:3030 (dashboard "Requiem: per-variant health"). The
-one-command `docker compose up` with the shop and Requiem inside it is still to do (Day 3).
+Grafana runs at http://localhost:3030 (dashboard "Requiem: per-variant health").
 
 ## Tests
 
-`python -m pytest -q tests`: the retire rules (including SRM block, too few samples, hash
+`python -m pytest -q tests` (91 tests): NAG's date rules, reference scanning, annotation format,
+exit codes and job summary; the retire rules (including SRM block, too few samples, hash
 binding of the memo), the codemod's golden cases, idempotency and compile checks on the real shop,
 and the breach rules (ceiling, minimum traffic, the control gap,
 consecutive windows, bad contracts), the Flagsmith client against payload shapes recorded

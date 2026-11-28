@@ -1,0 +1,9 @@
+*
+!requiem
+!demo
+!loadgen
+!requiem.yaml
+!deploy/bootstrap.py
+!deploy/with-env.sh
+!deploy/requirements-requiem.txt
+**/__pycache__
